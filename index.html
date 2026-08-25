@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Property Investment & Cashflow Analyzer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --bg:#12181c; --panel:#1a2228; --panel2:#212b32; --border:#2c383f;
+    --ink:#eef2f4; --ink2:#a9b7bf; --muted:#6d7d86;
+    --accent:#3fb6a8; --accent-dim:#1f4a45; --accent-ink:#0c2622;
+    --warn:#e0a339; --danger:#e0685a; --good:#4fc38a;
+    --radius:10px; --serif:Georgia,'Times New Roman',serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  #gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;}
+  #gate .box{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem;width:320px;text-align:center;}
+  #gate h1{font-family:var(--serif);font-size:20px;font-weight:400;margin:0 0 4px;}
+  #gate p{color:var(--muted);font-size:13px;margin:0 0 20px;}
+  #gate input{width:100%;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--ink);font-size:14px;margin-bottom:12px;}
+  #gate button{width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;color:var(--accent-ink);font-weight:600;font-size:14px;cursor:pointer;}
+  #gate .err{color:var(--danger);font-size:12px;height:16px;margin-bottom:4px;}
+  #app{display:none;max-width:1180px;margin:0 auto;padding:28px 24px 80px;}
+  header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px;}
+  header h1{font-family:var(--serif);font-weight:400;font-size:24px;margin:0;}
+  header .sub{color:var(--muted);font-size:13px;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;}
+  .panel h2{font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink2);margin:0 0 16px;font-weight:600;}
+  .grid{display:grid;gap:14px;}
+  .g4{grid-template-columns:repeat(4,1fr);}
+  .g3{grid-template-columns:repeat(3,1fr);}
+  .g2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:820px){.g4,.g3,.g2{grid-template-columns:repeat(2,1fr);}}
+  label{display:block;font-size:12px;color:var(--ink2);margin-bottom:4px;}
+  input,select{width:100%;padding:8px 10px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--ink);font-size:13px;}
+  input:focus,select:focus{outline:none;border-color:var(--accent);}
+  .field{margin-bottom:2px;}
+  .runbtn{margin-top:18px;padding:11px 20px;background:var(--accent);border:none;border-radius:8px;color:var(--accent-ink);font-weight:600;font-size:14px;cursor:pointer;}
+  .runbtn:hover{opacity:.92;}
+  .tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
+  .tab{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--ink2);font-size:13px;cursor:pointer;}
+  .tab.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:600;}
+  .kpi{background:var(--panel2);border-radius:var(--radius);padding:14px 16px;}
+  .kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .kpi .val{font-family:var(--serif);font-size:22px;}
+  .kpi .val.warn{color:var(--warn);} .kpi .val.good{color:var(--good);} .kpi .val.danger{color:var(--danger);}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{color:var(--muted);font-weight:500;text-transform:uppercase;font-size:10.5px;letter-spacing:.03em;}
+  td:first-child,th:first-child{text-align:left;}
+  .tablewrap{overflow-x:auto;}
+  .chartbox{position:relative;height:260px;margin-bottom:8px;}
+  .insights{list-style:none;padding:0;margin:0;}
+  .insights li{padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink2);line-height:1.5;}
+  .insights li:last-child{border-bottom:none;color:var(--muted);font-size:12px;font-style:italic;}
+  .insights li b{color:var(--ink);}
+  .badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600;}
+  .badge.ok{background:var(--accent-dim);color:var(--accent);}
+  .badge.no{background:#4a2622;color:var(--danger);}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--ink2);margin-bottom:6px;flex-wrap:wrap;}
+  .legend span{display:flex;align-items:center;gap:5px;}
+  .sw{width:10px;height:10px;border-radius:2px;display:inline-block;}
+  .footnote{font-size:11px;color:var(--muted);margin-top:24px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h1>Ratna Traya — Property Analyzer</h1>
+    <p>Enter access code to continue</p>
+    <div class="err" id="gateErr"></div>
+    <input type="password" id="gatePw" placeholder="Access code" onkeydown="if(event.key==='Enter')checkGate()">
+    <button onclick="checkGate()">Enter</button>
+  </div>
+</div>
+
+<div id="app">
+<header>
+  <div>
+    <h1>Property Investment & Cashflow Analyzer</h1>
+    <div class="sub">Four-scenario appreciation & cashflow model</div>
+  </div>
+  <div class="sub" id="clockline"></div>
+</header>
+
+<div class="panel">
+  <h2>Property & deal inputs</h2>
+  <div class="grid g4">
+    <div class="field"><label>Property type</label>
+      <select id="ptype"><option>Residential</option><option>Commercial Office</option><option>Retail</option><option>Warehouse/Logistics</option><option>Industrial</option><option>Land/Plot</option><option>Hospitality</option><option>Mixed Use</option><option>Institutional</option></select>
+    </div>
+    <div class="field"><label>Currency</label>
+      <select id="currency"><option>INR</option><option>USD</option><option>AED</option><option>GBP</option><option>EUR</option><option>SGD</option><option>AUD</option><option>CAD</option></select>
+    </div>
+    <div class="field"><label>Acquisition value</label><input type="number" id="acqValue" value="10000000"></div>
+    <div class="field"><label>Holding period (years)</label><input type="number" id="holdYears" value="10"></div>
+  </div>
+  <div class="grid g4" style="margin-top:14px;">
+    <div class="field"><label>Down payment / equity</label><input type="number" id="downPayment" value="3000000"></div>
+    <div class="field"><label>Loan amount</label><input type="number" id="loanAmount" value="7000000"></div>
+    <div class="field"><label>Interest rate % p.a.</label><input type="number" step="0.1" id="intRate" value="9.0"></div>
+    <div class="field"><label>Loan tenure (years)</label><input type="number" id="tenure" value="15"></div>
+  </div>
+  <div class="grid g4" style="margin-top:14px;">
+    <div class="field"><label>Annual gross rent</label><input type="number" id="grossRent" value="480000"></div>
+    <div class="field"><label>Vacancy %</label><input type="number" step="0.1" id="vacancy" value="5"></div>
+    <div class="field"><label>Rent escalation % p.a.</label><input type="number" step="0.1" id="rentEscal" value="5"></div>
+    <div class="field"><label>Appreciation % p.a. (base case)</label><input type="number" step="0.1" id="appn" value="6"></div>
+  </div>
+  <div class="grid g4" style="margin-top:14px;">
+    <div class="field"><label>Property tax (annual)</label><input type="number" id="propTax" value="25000"></div>
+    <div class="field"><label>Maintenance (annual)</label><input type="number" id="maint" value="40000"></div>
+    <div class="field"><label>Insurance (annual)</label><input type="number" id="insurance" value="8000"></div>
+    <div class="field"><label>Property mgmt % of income</label><input type="number" step="0.1" id="mgmtPct" value="8"></div>
+  </div>
+  <div class="grid g3" style="margin-top:14px;">
+    <div class="field"><label>Stamp duty / registration</label><input type="number" id="stampDuty" value="600000"></div>
+    <div class="field"><label>Legal / brokerage</label><input type="number" id="legal" value="80000"></div>
+    <div class="field"><label>Selling costs % (at exit)</label><input type="number" step="0.1" id="sellPct" value="2"></div>
+  </div>
+  <button class="runbtn" onclick="runAll()">Run analysis</button>
+</div>
+
+<div class="panel">
+  <h2>Scenario</h2>
+  <div class="tabs" id="scenTabs"></div>
+  <div class="grid g4" id="kpiRow"></div>
+</div>
+
+<div class="panel">
+  <h2>Property value & annual net cash flow</h2>
+  <div class="grid g2">
+    <div>
+      <div class="chartbox"><canvas id="valueChart" role="img" aria-label="Property value appreciation trend over the holding period"></canvas></div>
+    </div>
+    <div>
+      <div class="chartbox"><canvas id="cfChart" role="img" aria-label="Annual net cash flow and cumulative cash flow by year"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Four-scenario comparison — IRR by year range</h2>
+  <div class="chartbox"><canvas id="scenChart" role="img" aria-label="IRR comparison across Conservative, Base Case, Optimistic and Stress Test scenarios"></canvas></div>
+</div>
+
+<div class="panel">
+  <h2>Annual cash flow table</h2>
+  <div class="tablewrap">
+    <table id="cfTable"></table>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Automated insights</h2>
+  <ul class="insights" id="insightsList"></ul>
+</div>
+
+<div class="footnote">All figures are model-based estimates from the stated assumptions and are not guaranteed investment outcomes. Ratna Traya Jewellery / property analysis prototype.</div>
+</div>
+
+<script>
+/* ---------- ACCESS GATE (client-side only — not real security) ---------- */
+const ACCESS_CODE = "ratna2026";
+function checkGate(){
+  const v = document.getElementById('gatePw').value;
+  if(v === ACCESS_CODE){
+    document.getElementById('gate').style.display='none';
+    document.getElementById('app').style.display='block';
+    sessionStorage.setItem('ptok','1');
+    runAll();
+  } else {
+    document.getElementById('gateErr').textContent = 'Incorrect code — try again.';
+  }
+}
+if(sessionStorage.getItem('ptok')==='1'){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+document.getElementById('clockline').textContent = new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+
+/* ---------- CALCULATION ENGINE (ported from the Python engine) ---------- */
+function monthlyAmort(loanAmount, ratePct, years){
+  const n = years*12; if(loanAmount<=0||n<=0) return [];
+  const r = (ratePct/100)/12; let bal = loanAmount; const rows=[];
+  for(let m=1;m<=n;m++){
+    if(bal<=1e-6){ rows.push({interest:0,principal:0,closing:0}); continue; }
+    const opening=bal, interest=opening*r;
+    const remaining = n-m+1;
+    let principal;
+    if(r>0){
+      const pay = opening*(r*Math.pow(1+r,remaining))/(Math.pow(1+r,remaining)-1);
+      principal = Math.max(pay-interest,0);
+    } else { principal = opening/remaining; }
+    principal = Math.min(principal, opening);
+    const closing = Math.max(opening-principal,0);
+    rows.push({interest, principal, closing});
+    bal = closing;
+  }
+  return rows;
+}
+function annualDebtService(loanAmount, ratePct, years, holdYears){
+  const monthly = monthlyAmort(loanAmount, ratePct, years);
+  const out=[];
+  for(let y=1;y<=holdYears;y++){
+    const start=(y-1)*12, rows=monthly.slice(start,start+12);
+    const interest=rows.reduce((s,r)=>s+r.interest,0);
+    const principal=rows.reduce((s,r)=>s+r.principal,0);
+    const ending = rows.length? rows[rows.length-1].closing : (out.length?out[out.length-1].ending:loanAmount);
+    out.push({year:y, interest, principal, ending, debtService:interest+principal});
+  }
+  return out;
+}
+function irr(flows, guess=10){
+  if(!flows.some(f=>f<0)||!flows.some(f=>f>0)) return null;
+  const npvAt = r=>flows.reduce((s,cf,t)=>s+cf/Math.pow(1+r/100,t),0);
+  let rate=guess;
+  for(let i=0;i<100;i++){
+    const r=rate/100;
+    const val=flows.reduce((s,cf,t)=>s+cf/Math.pow(1+r,t),0);
+    const d=flows.reduce((s,cf,t)=>s-t*cf/Math.pow(1+r,t+1),0);
+    if(Math.abs(d)<1e-12) break;
+    const nr=rate-(val/d)*100;
+    if(Math.abs(nr-rate)<1e-6) return nr;
+    rate=nr; if(rate<=-99||rate>10000) break;
+  }
+  let lo=-99,hi=1000,flo=npvAt(lo),fhi=npvAt(hi);
+  if(flo*fhi>0) return null;
+  for(let i=0;i<200;i++){
+    const mid=(lo+hi)/2, fm=npvAt(mid);
+    if(Math.abs(fm)<1e-6) return mid;
+    if(flo*fm<0){hi=mid;fhi=fm;} else {lo=mid;flo=fm;}
+  }
+  return (lo+hi)/2;
+}
+const SCEN_ADJ = {
+  conservative:{appn:-2,rent:-1,vac:3,rate:0.5,opex:1.05,exit:0.95},
+  base_case:{appn:0,rent:0,vac:0,rate:0,opex:1,exit:1},
+  optimistic:{appn:2,rent:1,vac:-2,rate:-0.25,opex:0.97,exit:1.05},
+  stress_test:{appn:-6,rent:-3,vac:8,rate:2,opex:1.15,exit:0.80},
+};
+function readInputs(){
+  return {
+    acq: +document.getElementById('acqValue').value,
+    hold: +document.getElementById('holdYears').value,
+    down: +document.getElementById('downPayment').value,
+    loan: +document.getElementById('loanAmount').value,
+    rate: +document.getElementById('intRate').value,
+    tenure: +document.getElementById('tenure').value,
+    rent: +document.getElementById('grossRent').value,
+    vac: +document.getElementById('vacancy').value,
+    rentEsc: +document.getElementById('rentEscal').value,
+    appn: +document.getElementById('appn').value,
+    tax: +document.getElementById('propTax').value,
+    maint: +document.getElementById('maint').value,
+    ins: +document.getElementById('insurance').value,
+    mgmtPct: +document.getElementById('mgmtPct').value,
+    stamp: +document.getElementById('stampDuty').value,
+    legal: +document.getElementById('legal').value,
+    sellPct: +document.getElementById('sellPct').value,
+    currency: document.getElementById('currency').value,
+  };
+}
+function runEngine(base, scenKey){
+  const adj = SCEN_ADJ[scenKey];
+  const p = Object.assign({}, base);
+  p.appn += adj.appn; p.rentEsc += adj.rent; p.vac = Math.max(0, p.vac+adj.vac);
+  p.rate = Math.max(0, p.rate+adj.rate);
+  const equity = p.down + p.stamp + p.legal;
+  const debt = annualDebtService(p.loan, p.rate, p.tenure, p.hold);
+  let opening = p.acq, cum = -equity, rows=[], totalCF=0;
+  for(let y=1;y<=p.hold;y++){
+    const appnAmt = opening*(p.appn/100);
+    const closing = opening+appnAmt;
+    const escal = Math.pow(1+p.rentEsc/100, y-1);
+    const gross = p.rent*escal;
+    const vacAmt = gross*(p.vac/100);
+    const eff = gross-vacAmt;
+    const maint = p.maint*Math.pow(1.05, y-1);
+    const mgmt = eff*(p.mgmtPct/100);
+    const other = p.ins+mgmt;
+    const noi = eff - p.tax - maint - other;
+    const d = debt[y-1];
+    const netCF = noi - d.debtService;
+    cum += netCF; totalCF += netCF;
+    const isFinal = y===p.hold;
+    const saleVal = isFinal ? closing*adj.exit : 0;
+    const sellCost = saleVal*(p.sellPct/100);
+    const netSale = isFinal ? saleVal-sellCost-d.ending : 0;
+    const totalPL = isFinal ? (totalCF+netSale-equity) : null;
+    rows.push({year:y, opening, closing, gross, eff, noi, debtService:d.debtService, netCF, cum, saleVal, netSale, totalPL, ending:d.ending});
+    opening = closing;
+  }
+  const flows=[-equity];
+  rows.forEach(r=>{ let cf=r.netCF; if(r.netSale) cf+=r.netSale; flows.push(cf); });
+  const irrVal = irr(flows);
+  const beYear = rows.findIndex(r=>r.cum>=0);
+  const finalRow = rows[rows.length-1];
+  return {rows, equity, irr:irrVal, breakeven: beYear>=0?beYear+1:null,
+    totalPL: finalRow.totalPL, roi: equity>0? finalRow.totalPL/equity*100 : null};
+}
+
+let currentScenario='base_case', allResults={};
+function fmtC(n, cur){
+  const sign = n<0?'-':'';
+  return sign + cur + ' ' + Math.abs(Math.round(n)).toLocaleString();
+}
+function runAll(){
+  const base = readInputs();
+  ['conservative','base_case','optimistic','stress_test'].forEach(k=>{
+    allResults[k]=runEngine(base, k);
+  });
+  document.getElementById('scenTabs').innerHTML = ['conservative','base_case','optimistic','stress_test'].map(k=>
+    `<div class="tab ${k===currentScenario?'active':''}" onclick="selectScenario('${k}')">${k.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>`
+  ).join('');
+  renderScenario(base);
+  renderScenarioChart(base);
+}
+function selectScenario(k){ currentScenario=k; runAll_render(); }
+function runAll_render(){
+  const base=readInputs();
+  document.getElementById('scenTabs').innerHTML = ['conservative','base_case','optimistic','stress_test'].map(k=>
+    `<div class="tab ${k===currentScenario?'active':''}" onclick="selectScenario('${k}')">${k.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>`
+  ).join('');
+  renderScenario(base);
+}
+function renderScenario(base){
+  const cur = base.currency;
+  const r = allResults[currentScenario];
+  const kpis = [
+    ['IRR', r.irr!==null? r.irr.toFixed(2)+'%':'N/A', r.irr>0?'good':'danger'],
+    ['Equity invested', fmtC(r.equity,cur), ''],
+    ['Break-even year', r.breakeven?('Year '+r.breakeven):'NO BREAKEVEN', r.breakeven?'good':'danger'],
+    ['Total P/L', fmtC(r.totalPL,cur), r.totalPL>0?'good':'danger'],
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(([l,v,c])=>
+    `<div class="kpi"><div class="lbl">${l}</div><div class="val ${c}">${v}</div></div>`
+  ).join('');
+
+  const tbl = document.getElementById('cfTable');
+  let html = '<tr><th>Year</th><th>Open value</th><th>Close value</th><th>Eff income</th><th>NOI</th><th>Debt service</th><th>Net CF</th><th>Cumulative</th><th>Sale/Total P&L</th></tr>';
+  r.rows.forEach(row=>{
+    html += `<tr><td>${row.year}</td><td>${fmtC(row.opening,cur)}</td><td>${fmtC(row.closing,cur)}</td><td>${fmtC(row.eff,cur)}</td><td>${fmtC(row.noi,cur)}</td><td>${fmtC(row.debtService,cur)}</td><td>${fmtC(row.netCF,cur)}</td><td>${fmtC(row.cum,cur)}</td><td>${row.totalPL!==null? fmtC(row.totalPL,cur):'—'}</td></tr>`;
+  });
+  tbl.innerHTML = html;
+
+  renderCharts(r, cur);
+  renderInsights(r, base);
+}
+let valueChart, cfChart, scenChartObj;
+function renderCharts(r, cur){
+  const years = r.rows.map(x=>'Yr '+x.year);
+  const closing = r.rows.map(x=>Math.round(x.closing));
+  const netcf = r.rows.map(x=>Math.round(x.netCF));
+  const cum = r.rows.map(x=>Math.round(x.cum));
+
+  if(valueChart) valueChart.destroy();
+  valueChart = new Chart(document.getElementById('valueChart'), {
+    type:'line',
+    data:{labels:years, datasets:[{label:'Property value', data:closing, borderColor:'#3fb6a8', backgroundColor:'rgba(63,182,168,0.1)', fill:true, tension:0.2, pointRadius:2}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{color:'#a9b7bf'}, grid:{color:'#2c383f'}}, x:{ticks:{color:'#a9b7bf'}, grid:{display:false}}}}
+  });
+
+  if(cfChart) cfChart.destroy();
+  cfChart = new Chart(document.getElementById('cfChart'), {
+    data:{labels:years, datasets:[
+      {type:'bar', label:'Net cash flow', data:netcf, backgroundColor:netcf.map(v=>v<0?'#e0685a':'#4fc38a')},
+      {type:'line', label:'Cumulative', data:cum, borderColor:'#eda100', borderDash:[4,3], pointRadius:0, yAxisID:'y'}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{ticks:{color:'#a9b7bf'}, grid:{color:'#2c383f'}}, x:{ticks:{color:'#a9b7bf'}, grid:{display:false}}}}
+  });
+}
+function renderScenarioChart(base){
+  const labels = ['Conservative','Base Case','Optimistic','Stress Test'];
+  const keys=['conservative','base_case','optimistic','stress_test'];
+  const vals = keys.map(k=>allResults[k].irr!==null? +allResults[k].irr.toFixed(2) : 0);
+  const colors = ['#eda100','#3fb6a8','#4fc38a','#e0685a'];
+  if(scenChartObj) scenChartObj.destroy();
+  scenChartObj = new Chart(document.getElementById('scenChart'), {
+    type:'bar',
+    data:{labels, datasets:[{label:'IRR %', data:vals, backgroundColor:colors}]},
+    options:{responsive:true, maintainAspectRatio:false, indexAxis:'y',
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#a9b7bf'}, grid:{color:'#2c383f'}}, y:{ticks:{color:'#a9b7bf'}, grid:{display:false}}}}
+  });
+}
+function renderInsights(r, base){
+  const cur = base.currency;
+  const lines = [];
+  const negYears = r.rows.filter(x=>x.netCF<0).map(x=>x.year);
+  const ltv = base.loan/base.acq*100;
+  if(ltv>=70) lines.push(`High leverage (LTV ~${ltv.toFixed(0)}%) amplifies both upside and downside.`);
+  if(negYears.length) lines.push(`${negYears.length} year(s) show negative net cash flow (years: ${negYears.join(', ')}). Be prepared to fund shortfalls externally in those years.`);
+  if(!r.breakeven) lines.push(`<b>NO BREAKEVEN</b> reached within the holding period — cumulative cash flow never turns positive before exit.`);
+  else lines.push(`Break-even occurs in <b>year ${r.breakeven}</b>.`);
+  if(r.irr!==null) lines.push(`Projected IRR for this scenario: <b>${r.irr.toFixed(2)}%</b>.`);
+  lines.push('All figures above are model-based estimates and not guaranteed investment outcomes.');
+  document.getElementById('insightsList').innerHTML = lines.map(l=>`<li>${l}</li>`).join('');
+}
+window.selectScenario = function(k){ currentScenario=k; runAll_render(); };
+if(sessionStorage.getItem('ptok')==='1') runAll();
+</script>
+</body>
+</html>

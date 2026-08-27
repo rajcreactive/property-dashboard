@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Property Investment & Cashflow Analyzer</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg:#12181c; --panel:#1a2228; --panel2:#212b32; --border:#2c383f;
@@ -64,6 +65,41 @@
   .legend span{display:flex;align-items:center;gap:5px;}
   .sw{width:10px;height:10px;border-radius:2px;display:inline-block;}
   .footnote{font-size:11px;color:var(--muted);margin-top:24px;text-align:center;}
+  .lblrow{display:flex;align-items:center;gap:5px;margin-bottom:4px;}
+  .info-wrap{position:relative;display:inline-flex;}
+  .info-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:var(--panel2);border:1px solid var(--muted);color:var(--muted);font-size:10px;font-style:italic;font-family:Georgia,serif;cursor:help;line-height:1;}
+  .tooltip{visibility:hidden;opacity:0;position:absolute;bottom:135%;left:50%;transform:translateX(-50%);background:#0a0e11;border:1px solid var(--border);color:#e6ecee;padding:8px 10px;border-radius:6px;font-size:11.5px;line-height:1.5;width:210px;z-index:30;transition:opacity .12s;pointer-events:none;}
+  .info-wrap:hover .tooltip{visibility:visible;opacity:1;}
+  input[type=range]{width:100%;margin-top:6px;accent-color:var(--accent);height:16px;}
+  .thtip{cursor:help;border-bottom:1px dotted var(--muted);}
+  .exportbtns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .exportbtns button{padding:9px 16px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--ink);font-size:13px;cursor:pointer;}
+  .exportbtns button:hover{border-color:var(--accent);color:var(--accent);}
+  .print-only{display:none;}
+  .assumptions-box{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--ink2);line-height:1.6;}
+  .assumptions-box b{color:var(--ink);}
+  .fx-badge{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--ink2);font-size:13px;cursor:pointer;}
+  .fx-badge.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent);font-weight:600;}
+  .fx-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;}
+  .formulas-list{list-style:none;padding:0;margin:0;columns:2;column-gap:24px;}
+  .formulas-list li{font-size:12.5px;color:var(--ink2);padding:7px 0;border-bottom:1px solid var(--border);break-inside:avoid;}
+  .formulas-list li b{color:var(--ink);display:block;margin-bottom:2px;}
+  #printInputsGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px;font-size:12px;}
+  #printInputsGrid div{padding:3px 0;border-bottom:1px solid var(--border);}
+  #printInputsGrid span{color:var(--muted);}
+  @media print{
+    body{background:#fff;color:#000;}
+    .no-print{display:none !important;}
+    .print-only{display:block !important;}
+    .panel{border:1px solid #ccc;background:#fff;color:#000;break-inside:avoid;}
+    .panel h2{color:#333;}
+    th,td{color:#000;border-color:#ddd;}
+    .kpi{background:#f2f2f2;}
+    .kpi .val{color:#000 !important;}
+    .insights li, .formulas-list li, .assumptions-box{color:#333;}
+    #printInputsGrid span{color:#666;}
+    #app{max-width:100%;}
+  }
 </style>
 </head>
 <body>
@@ -87,41 +123,9 @@
   <div class="sub" id="clockline"></div>
 </header>
 
-<div class="panel">
+<div class="panel no-print">
   <h2>Property & deal inputs</h2>
-  <div class="grid g4">
-    <div class="field"><label>Property type</label>
-      <select id="ptype"><option>Residential</option><option>Commercial Office</option><option>Retail</option><option>Warehouse/Logistics</option><option>Industrial</option><option>Land/Plot</option><option>Hospitality</option><option>Mixed Use</option><option>Institutional</option></select>
-    </div>
-    <div class="field"><label>Currency</label>
-      <select id="currency"><option>INR</option><option>USD</option><option>AED</option><option>GBP</option><option>EUR</option><option>SGD</option><option>AUD</option><option>CAD</option></select>
-    </div>
-    <div class="field"><label>Acquisition value</label><input type="number" id="acqValue" value="10000000"></div>
-    <div class="field"><label>Holding period (years)</label><input type="number" id="holdYears" value="10"></div>
-  </div>
-  <div class="grid g4" style="margin-top:14px;">
-    <div class="field"><label>Down payment / equity</label><input type="number" id="downPayment" value="3000000"></div>
-    <div class="field"><label>Loan amount</label><input type="number" id="loanAmount" value="7000000"></div>
-    <div class="field"><label>Interest rate % p.a.</label><input type="number" step="0.1" id="intRate" value="9.0"></div>
-    <div class="field"><label>Loan tenure (years)</label><input type="number" id="tenure" value="15"></div>
-  </div>
-  <div class="grid g4" style="margin-top:14px;">
-    <div class="field"><label>Annual gross rent</label><input type="number" id="grossRent" value="480000"></div>
-    <div class="field"><label>Vacancy %</label><input type="number" step="0.1" id="vacancy" value="5"></div>
-    <div class="field"><label>Rent escalation % p.a.</label><input type="number" step="0.1" id="rentEscal" value="5"></div>
-    <div class="field"><label>Appreciation % p.a. (base case)</label><input type="number" step="0.1" id="appn" value="6"></div>
-  </div>
-  <div class="grid g4" style="margin-top:14px;">
-    <div class="field"><label>Property tax (annual)</label><input type="number" id="propTax" value="25000"></div>
-    <div class="field"><label>Maintenance (annual)</label><input type="number" id="maint" value="40000"></div>
-    <div class="field"><label>Insurance (annual)</label><input type="number" id="insurance" value="8000"></div>
-    <div class="field"><label>Property mgmt % of income</label><input type="number" step="0.1" id="mgmtPct" value="8"></div>
-  </div>
-  <div class="grid g3" style="margin-top:14px;">
-    <div class="field"><label>Stamp duty / registration</label><input type="number" id="stampDuty" value="600000"></div>
-    <div class="field"><label>Legal / brokerage</label><input type="number" id="legal" value="80000"></div>
-    <div class="field"><label>Selling costs % (at exit)</label><input type="number" step="0.1" id="sellPct" value="2"></div>
-  </div>
+  <div id="inputsHost"></div>
   <button class="runbtn" onclick="runAll()">Run analysis</button>
 </div>
 
@@ -129,6 +133,14 @@
   <h2>Scenario</h2>
   <div class="tabs" id="scenTabs"></div>
   <div class="grid g4" id="kpiRow"></div>
+  <div id="scenAssumptions" class="assumptions-box"></div>
+</div>
+
+<div class="panel no-print">
+  <h2>Compare in another currency</h2>
+  <div class="tabs" id="fxTabs"></div>
+  <div id="fxControls"></div>
+  <div id="fxNote" class="fx-note"></div>
 </div>
 
 <div class="panel">
@@ -153,6 +165,20 @@
   <div class="tablewrap">
     <table id="cfTable"></table>
   </div>
+  <div class="exportbtns no-print">
+    <button onclick="downloadExcel()">Download Excel (.xlsx)</button>
+    <button onclick="downloadPDF()">Download PDF</button>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Formulas & definitions</h2>
+  <ul class="formulas-list" id="formulasList"></ul>
+</div>
+
+<div class="panel print-only" id="printInputsSummary">
+  <h2>Inputs used for this report</h2>
+  <div id="printInputsGrid"></div>
 </div>
 
 <div class="panel">
@@ -182,6 +208,58 @@ if(sessionStorage.getItem('ptok')==='1'){
   document.getElementById('app').style.display='block';
 }
 document.getElementById('clockline').textContent = new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
+
+/* ---------- INPUT FIELD DEFINITIONS + RENDERING ---------- */
+const FIELD_GROUPS = [
+  {cls:'g4', fields:[
+    {id:'ptype', label:'Property type', type:'select', tip:'The category of property being analyzed. Shown on reports; does not affect the calculation.', options:['Residential','Commercial Office','Retail','Warehouse/Logistics','Industrial','Land/Plot','Hospitality','Mixed Use','Institutional']},
+    {id:'currency', label:'Currency', type:'select', tip:'Currency all figures on this page are expressed in.', options:['INR','USD','AED','GBP','EUR','SGD','AUD','CAD']},
+    {id:'acqValue', label:'Acquisition value', type:'number', tip:'Total purchase price of the property today, before any financing or costs.', value:10000000},
+    {id:'holdYears', label:'Holding period (years)', type:'number', tip:'Number of years you plan to hold the property before selling.', value:10},
+  ]},
+  {cls:'g4', fields:[
+    {id:'downPayment', label:'Down payment / equity', type:'number', tip:'Cash paid upfront from your own funds — the portion of the price not covered by the loan.', value:3000000},
+    {id:'loanAmount', label:'Loan amount', type:'number', tip:'Amount borrowed from a bank or lender to fund the purchase.', value:7000000},
+    {id:'intRate', label:'Interest rate % p.a.', type:'percent', tip:'Annual interest rate charged on the loan by the lender.', value:9.0, min:0, max:20, step:0.1},
+    {id:'tenure', label:'Loan tenure (years)', type:'number', tip:'Number of years over which the loan is repaid (the amortisation period).', value:15},
+  ]},
+  {cls:'g4', fields:[
+    {id:'grossRent', label:'Annual gross rent', type:'number', tip:'Total rent you would collect in a year if the property were fully occupied all year.', value:480000},
+    {id:'vacancy', label:'Vacancy %', type:'percent', tip:'Percentage of the year the property is expected to sit empty or between tenants.', value:5, min:0, max:50, step:0.5},
+    {id:'rentEscal', label:'Rent escalation % p.a.', type:'percent', tip:'Expected annual percentage increase in rent, e.g. from lease escalation clauses.', value:5, min:0, max:15, step:0.5},
+    {id:'appn', label:'Appreciation % p.a. (base case)', type:'percent', tip:'Expected annual growth rate in the property market value, under the Base Case scenario.', value:6, min:-5, max:20, step:0.5},
+  ]},
+  {cls:'g4', fields:[
+    {id:'propTax', label:'Property tax (annual)', type:'number', tip:'Annual government or municipal property tax.', value:25000},
+    {id:'maint', label:'Maintenance (annual)', type:'number', tip:'Annual repairs and general upkeep cost (grows 5% per year in this model).', value:40000},
+    {id:'insurance', label:'Insurance (annual)', type:'number', tip:'Annual property insurance premium.', value:8000},
+    {id:'mgmtPct', label:'Property mgmt % of income', type:'percent', tip:'Fee paid to a property manager, as a percentage of effective rental income collected.', value:8, min:0, max:20, step:0.5},
+  ]},
+  {cls:'g3', fields:[
+    {id:'stampDuty', label:'Stamp duty / registration', type:'number', tip:'One-time government registration and stamp duty cost paid at the time of purchase.', value:600000},
+    {id:'legal', label:'Legal / brokerage', type:'number', tip:'One-time legal fees and brokerage or agent commission paid at purchase.', value:80000},
+    {id:'sellPct', label:'Selling costs % (at exit)', type:'percent', tip:'Brokerage and other transaction costs paid when you sell, as a percentage of sale price.', value:2, min:0, max:10, step:0.5},
+  ]},
+];
+function fieldHTML(f){
+  const tipHTML = `<span class="info-wrap"><i class="info-icon">i</i><span class="tooltip">${f.tip}</span></span>`;
+  if(f.type==='select'){
+    return `<div class="field"><div class="lblrow"><label style="margin:0;">${f.label}</label>${tipHTML}</div>
+      <select id="${f.id}">${f.options.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+  }
+  if(f.type==='percent'){
+    return `<div class="field"><div class="lblrow"><label style="margin:0;">${f.label}</label>${tipHTML}</div>
+      <input type="number" step="${f.step}" id="${f.id}" value="${f.value}" oninput="syncSlider('${f.id}')">
+      <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.value}" id="${f.id}_r" oninput="syncNumber('${f.id}')"></div>`;
+  }
+  return `<div class="field"><div class="lblrow"><label style="margin:0;">${f.label}</label>${tipHTML}</div>
+    <input type="number" id="${f.id}" value="${f.value}"></div>`;
+}
+function syncSlider(id){ const r=document.getElementById(id+'_r'); if(r) r.value=document.getElementById(id).value; }
+function syncNumber(id){ document.getElementById(id).value=document.getElementById(id+'_r').value; }
+document.getElementById('inputsHost').innerHTML = FIELD_GROUPS.map(g=>
+  `<div class="grid ${g.cls}" style="margin-top:14px;">${g.fields.map(fieldHTML).join('')}</div>`
+).join('');
 
 /* ---------- CALCULATION ENGINE (ported from the Python engine) ---------- */
 function monthlyAmort(loanAmount, ratePct, years){
@@ -243,6 +321,70 @@ const SCEN_ADJ = {
   optimistic:{appn:2,rent:1,vac:-2,rate:-0.25,opex:0.97,exit:1.05},
   stress_test:{appn:-6,rent:-3,vac:8,rate:2,opex:1.15,exit:0.80},
 };
+const SCEN_DESC = {
+  conservative:'Downside-but-plausible case. Vs. your Base Case inputs: Appreciation \u22122 pts, Rent growth \u22121 pt, Vacancy +3 pts, Interest rate +0.5 pt, Operating costs +5%, Exit value \u00d70.95.',
+  base_case:'Uses your entered assumptions exactly as provided, with no adjustment.',
+  optimistic:'Upside case. Vs. your Base Case inputs: Appreciation +2 pts, Rent growth +1 pt, Vacancy \u22122 pts, Interest rate \u22120.25 pt, Operating costs \u22123%, Exit value \u00d71.05.',
+  stress_test:'Severe adverse case. Vs. your Base Case inputs: Appreciation \u22126 pts, Rent growth \u22123 pts, Vacancy +8 pts, Interest rate +2 pts, Operating costs +15%, Exit value \u00d70.80.',
+};
+const COLUMN_DEFS = [
+  ['Year','Reporting year number within the holding period.'],
+  ['Open value','Property value at the start of the year (= previous year\u2019s closing value).'],
+  ['Close value','Open value \u00d7 (1 + Appreciation %) for that year.'],
+  ['Eff income','Gross rent \u00d7 (1 \u2212 Vacancy %) \u2014 rent actually collected after vacancy.'],
+  ['NOI','Effective income \u2212 Property tax \u2212 Maintenance \u2212 Other costs (insurance + mgmt fee).'],
+  ['Debt service','Interest paid + Principal repaid this year, from the loan amortisation schedule.'],
+  ['Net CF','NOI \u2212 Debt service \u2014 cash left over after all costs and loan payments.'],
+  ['Cumulative','Running total of Net CF across all years so far, starting from \u2212Equity invested.'],
+  ['Status','Profit if Cumulative \u2265 0 so far, otherwise Loss.'],
+  ['Sale / Total P&L','Final year only: Net sale proceeds = Sale value \u2212 Selling costs \u2212 Loan balance. Total P/L = \u03a3 Net CF + Net sale proceeds \u2212 Equity invested.'],
+];
+const FX_QUICK = ['INR','USD','GBP','AED','CAD'];
+const FX_FALLBACK = {INR:1, USD:0.012, GBP:0.0095, AED:0.044, CAD:0.0163};
+let fxTarget = null, fxRate = 1, fxDrift = 0, baseCurrencyGlobal = 'INR';
+function fxConvert(amount, year){
+  if(!fxTarget) return amount;
+  return amount * fxRate * Math.pow(1+fxDrift/100, year||0);
+}
+function fxCur(){ return fxTarget || baseCurrencyGlobal; }
+function toggleFx(target){
+  if(target===fxTarget || target===null){ fxTarget=null; }
+  else {
+    fxTarget = target;
+    const def = (FX_FALLBACK[target]!==undefined && FX_FALLBACK[baseCurrencyGlobal]!==undefined)
+      ? FX_FALLBACK[target]/FX_FALLBACK[baseCurrencyGlobal] : 1;
+    fxRate = +def.toFixed(4);
+    fxDrift = 0;
+  }
+  renderFxPanel();
+  runAll_render();
+}
+function updateFxRate(){ fxRate = +document.getElementById('fxRate').value || 0; renderFxNote(); runAll_render(); }
+function updateFxDrift(){ fxDrift = +document.getElementById('fxDrift').value || 0; renderFxNote(); runAll_render(); }
+function renderFxNote(){
+  const note = document.getElementById('fxNote');
+  note.innerHTML = fxTarget
+    ? `All amounts below use a manual rate of 1 ${baseCurrencyGlobal} = ${fxRate} ${fxTarget} (editable above \u2014 not a live market rate), assuming ${fxDrift}%/year FX drift between the two currencies. Verify current rates before making real decisions.`
+    : '';
+}
+function renderFxPanel(){
+  const list = FX_QUICK.filter(c=>c!==baseCurrencyGlobal);
+  const opts = list.length ? list : FX_QUICK;
+  document.getElementById('fxTabs').innerHTML =
+    `<div class="fx-badge ${!fxTarget?'active':''}" onclick="toggleFx(null)">${baseCurrencyGlobal} (original)</div>` +
+    opts.map(c=>`<div class="fx-badge ${fxTarget===c?'active':''}" onclick="toggleFx('${c}')">${c}</div>`).join('');
+  const host = document.getElementById('fxControls');
+  if(!fxTarget){ host.innerHTML=''; renderFxNote(); return; }
+  host.innerHTML = `<div class="grid g2" style="margin-top:10px;">
+    <div class="field"><label>Exchange rate: 1 ${baseCurrencyGlobal} = ___ ${fxTarget}</label>
+      <input type="number" step="0.0001" id="fxRate" value="${fxRate}" oninput="updateFxRate()"></div>
+    <div class="field"><label>Expected annual FX drift % (${fxTarget} vs ${baseCurrencyGlobal})</label>
+      <input type="number" step="0.5" id="fxDrift" value="${fxDrift}" oninput="syncSlider('fxDrift'); updateFxDrift();">
+      <input type="range" min="-10" max="10" step="0.5" value="${fxDrift}" id="fxDrift_r" oninput="syncNumber('fxDrift'); updateFxDrift();"></div>
+  </div>`;
+  renderFxNote();
+}
+
 function readInputs(){
   return {
     acq: +document.getElementById('acqValue').value,
@@ -311,14 +453,18 @@ function fmtC(n, cur){
 }
 function runAll(){
   const base = readInputs();
+  baseCurrencyGlobal = base.currency;
+  if(fxTarget === baseCurrencyGlobal) fxTarget = null;
   ['conservative','base_case','optimistic','stress_test'].forEach(k=>{
     allResults[k]=runEngine(base, k);
   });
   document.getElementById('scenTabs').innerHTML = ['conservative','base_case','optimistic','stress_test'].map(k=>
     `<div class="tab ${k===currentScenario?'active':''}" onclick="selectScenario('${k}')">${k.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</div>`
   ).join('');
+  renderFxPanel();
   renderScenario(base);
   renderScenarioChart(base);
+  renderPrintInputs(base);
 }
 function selectScenario(k){ currentScenario=k; runAll_render(); }
 function runAll_render(){
@@ -329,22 +475,28 @@ function runAll_render(){
   renderScenario(base);
 }
 function renderScenario(base){
-  const cur = base.currency;
+  const cur = fxCur();
   const r = allResults[currentScenario];
   const kpis = [
     ['IRR', r.irr!==null? r.irr.toFixed(2)+'%':'N/A', r.irr>0?'good':'danger'],
-    ['Equity invested', fmtC(r.equity,cur), ''],
+    ['Equity invested', fmtC(fxConvert(r.equity,0),cur), ''],
     ['Break-even year', r.breakeven?('Year '+r.breakeven):'NO BREAKEVEN', r.breakeven?'good':'danger'],
-    ['Total P/L', fmtC(r.totalPL,cur), r.totalPL>0?'good':'danger'],
+    ['Total P/L', fmtC(fxConvert(r.totalPL, base.hold),cur), r.totalPL>0?'good':'danger'],
   ];
   document.getElementById('kpiRow').innerHTML = kpis.map(([l,v,c])=>
     `<div class="kpi"><div class="lbl">${l}</div><div class="val ${c}">${v}</div></div>`
   ).join('');
+  document.getElementById('scenAssumptions').innerHTML =
+    `<b>${currentScenario.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())} \u2014 assumptions used:</b> ${SCEN_DESC[currentScenario]}`;
 
   const tbl = document.getElementById('cfTable');
-  let html = '<tr><th>Year</th><th>Open value</th><th>Close value</th><th>Eff income</th><th>NOI</th><th>Debt service</th><th>Net CF</th><th>Cumulative</th><th>Sale/Total P&L</th></tr>';
+  let html = '<tr>' + COLUMN_DEFS.map(([label,tip])=>
+    `<th>${label} <span class="info-wrap thtip"><i class="info-icon">i</i><span class="tooltip">${tip}</span></span></th>`
+  ).join('') + '</tr>';
   r.rows.forEach(row=>{
-    html += `<tr><td>${row.year}</td><td>${fmtC(row.opening,cur)}</td><td>${fmtC(row.closing,cur)}</td><td>${fmtC(row.eff,cur)}</td><td>${fmtC(row.noi,cur)}</td><td>${fmtC(row.debtService,cur)}</td><td>${fmtC(row.netCF,cur)}</td><td>${fmtC(row.cum,cur)}</td><td>${row.totalPL!==null? fmtC(row.totalPL,cur):'—'}</td></tr>`;
+    const isProfit = row.cum >= 0;
+    const status = `<span class="badge ${isProfit?'ok':'no'}">${isProfit?'Profit':'Loss'}</span>`;
+    html += `<tr><td>${row.year}</td><td>${fmtC(fxConvert(row.opening,row.year),cur)}</td><td>${fmtC(fxConvert(row.closing,row.year),cur)}</td><td>${fmtC(fxConvert(row.eff,row.year),cur)}</td><td>${fmtC(fxConvert(row.noi,row.year),cur)}</td><td>${fmtC(fxConvert(row.debtService,row.year),cur)}</td><td>${fmtC(fxConvert(row.netCF,row.year),cur)}</td><td>${fmtC(fxConvert(row.cum,row.year),cur)}</td><td>${status}</td><td>${row.totalPL!==null? fmtC(fxConvert(row.totalPL,row.year),cur):'\u2014'}</td></tr>`;
   });
   tbl.innerHTML = html;
 
@@ -353,10 +505,12 @@ function renderScenario(base){
 }
 let valueChart, cfChart, scenChartObj;
 function renderCharts(r, cur){
+  if(typeof Chart === 'undefined'){ console.warn('Chart.js failed to load — skipping charts.'); return; }
+  try{
   const years = r.rows.map(x=>'Yr '+x.year);
-  const closing = r.rows.map(x=>Math.round(x.closing));
-  const netcf = r.rows.map(x=>Math.round(x.netCF));
-  const cum = r.rows.map(x=>Math.round(x.cum));
+  const closing = r.rows.map(x=>Math.round(fxConvert(x.closing,x.year)));
+  const netcf = r.rows.map(x=>Math.round(fxConvert(x.netCF,x.year)));
+  const cum = r.rows.map(x=>Math.round(fxConvert(x.cum,x.year)));
 
   if(valueChart) valueChart.destroy();
   valueChart = new Chart(document.getElementById('valueChart'), {
@@ -377,8 +531,11 @@ function renderCharts(r, cur){
       plugins:{legend:{display:false}},
       scales:{y:{ticks:{color:'#a9b7bf'}, grid:{color:'#2c383f'}}, x:{ticks:{color:'#a9b7bf'}, grid:{display:false}}}}
   });
+  } catch(e){ console.warn('Chart render failed, continuing without it:', e); }
 }
 function renderScenarioChart(base){
+  if(typeof Chart === 'undefined'){ console.warn('Chart.js failed to load — skipping scenario chart.'); return; }
+  try{
   const labels = ['Conservative','Base Case','Optimistic','Stress Test'];
   const keys=['conservative','base_case','optimistic','stress_test'];
   const vals = keys.map(k=>allResults[k].irr!==null? +allResults[k].irr.toFixed(2) : 0);
@@ -391,9 +548,9 @@ function renderScenarioChart(base){
       plugins:{legend:{display:false}},
       scales:{x:{ticks:{color:'#a9b7bf'}, grid:{color:'#2c383f'}}, y:{ticks:{color:'#a9b7bf'}, grid:{display:false}}}}
   });
+  } catch(e){ console.warn('Scenario chart render failed, continuing without it:', e); }
 }
 function renderInsights(r, base){
-  const cur = base.currency;
   const lines = [];
   const negYears = r.rows.filter(x=>x.netCF<0).map(x=>x.year);
   const ltv = base.loan/base.acq*100;
@@ -405,7 +562,92 @@ function renderInsights(r, base){
   lines.push('All figures above are model-based estimates and not guaranteed investment outcomes.');
   document.getElementById('insightsList').innerHTML = lines.map(l=>`<li>${l}</li>`).join('');
 }
+function renderFormulasList(){
+  document.getElementById('formulasList').innerHTML = COLUMN_DEFS.map(([l,t])=>`<li><b>${l}</b>${t}</li>`).join('');
+}
+function renderPrintInputs(base){
+  let html = `<div style="grid-column:1/-1;margin-bottom:4px;"><span>Scenario shown:</span> ${currentScenario.replace('_',' ')} &nbsp;|&nbsp; <span>Currency:</span> ${fxCur()}${fxTarget?` (converted from ${baseCurrencyGlobal} at 1:${fxRate}, ${fxDrift}%/yr drift)`:''}</div>`;
+  FIELD_GROUPS.forEach(g=>g.fields.forEach(f=>{
+    const el = document.getElementById(f.id);
+    const val = el ? el.value : '';
+    html += `<div><span>${f.label}:</span> ${val}</div>`;
+  }));
+  document.getElementById('printInputsGrid').innerHTML = html;
+}
 window.selectScenario = function(k){ currentScenario=k; runAll_render(); };
+renderFormulasList();
+
+/* ---------- EXPORTS ---------- */
+function downloadExcel(){
+  if(typeof XLSX === 'undefined'){ alert('The Excel export library failed to load. Please check your internet connection and try again.'); return; }
+  const base = readInputs();
+  const r = allResults[currentScenario];
+  const cur = fxCur();
+  const wb = XLSX.utils.book_new();
+
+  // --- Inputs sheet: every input value used to produce this report ---
+  const inputsRows = [];
+  FIELD_GROUPS.forEach(g=>g.fields.forEach(f=>{
+    const el = document.getElementById(f.id);
+    inputsRows.push({Parameter: f.label, Value: el ? el.value : ''});
+  }));
+  const wsInputs = XLSX.utils.json_to_sheet(inputsRows);
+  wsInputs['!cols'] = [{wch:32},{wch:22}];
+  XLSX.utils.book_append_sheet(wb, wsInputs, 'Inputs');
+
+  // --- Assumptions sheet: scenario + currency/FX assumptions applied ---
+  const assumptionsRows = [
+    {Item:'Scenario shown in this workbook', Detail: currentScenario.replace('_',' ')},
+    {Item:'Scenario assumptions applied', Detail: SCEN_DESC[currentScenario]},
+    {Item:'Display currency', Detail: cur + (fxTarget ? ` — converted from ${baseCurrencyGlobal} at a manual rate of 1 ${baseCurrencyGlobal} = ${fxRate} ${fxTarget}, assuming ${fxDrift}%/year FX drift. This is a manually entered rate, not a live market rate.` : ' (no currency conversion applied)')},
+  ];
+  const wsAssump = XLSX.utils.json_to_sheet(assumptionsRows);
+  wsAssump['!cols'] = [{wch:28},{wch:90}];
+  XLSX.utils.book_append_sheet(wb, wsAssump, 'Assumptions');
+
+  // --- Cash flow sheet: full annual table in the selected display currency ---
+  const cfRows = r.rows.map(row=>({
+    Year: row.year,
+    [`Opening Value (${cur})`]: Math.round(fxConvert(row.opening,row.year)),
+    [`Closing Value (${cur})`]: Math.round(fxConvert(row.closing,row.year)),
+    [`Effective Income (${cur})`]: Math.round(fxConvert(row.eff,row.year)),
+    [`NOI (${cur})`]: Math.round(fxConvert(row.noi,row.year)),
+    [`Debt Service (${cur})`]: Math.round(fxConvert(row.debtService,row.year)),
+    [`Net Cash Flow (${cur})`]: Math.round(fxConvert(row.netCF,row.year)),
+    [`Cumulative Cash Flow (${cur})`]: Math.round(fxConvert(row.cum,row.year)),
+    'Status': row.cum>=0 ? 'Profit' : 'Loss',
+    [`Sale Value (${cur})`]: Math.round(fxConvert(row.saleVal,row.year)),
+    [`Net Sale Proceeds (${cur})`]: Math.round(fxConvert(row.netSale,row.year)),
+    [`Total P/L (${cur})`]: row.totalPL!==null ? Math.round(fxConvert(row.totalPL,row.year)) : ''
+  }));
+  const wsCF = XLSX.utils.json_to_sheet(cfRows);
+  wsCF['!cols'] = Object.keys(cfRows[0]).map(k=>({wch: k==='Status'?10:20}));
+  XLSX.utils.book_append_sheet(wb, wsCF, 'Cash Flow');
+
+  // --- Formulas reference sheet ---
+  const formulaRows = COLUMN_DEFS.map(([label,tip])=>({Column: label, 'Formula / definition': tip}));
+  const wsF = XLSX.utils.json_to_sheet(formulaRows);
+  wsF['!cols'] = [{wch:18},{wch:90}];
+  XLSX.utils.book_append_sheet(wb, wsF, 'Formulas Reference');
+
+  // --- Summary / KPI sheet ---
+  const kpiRows = [
+    {Metric:'Scenario', Value: currentScenario},
+    {Metric:'Currency', Value: cur},
+    {Metric:'Equity Invested', Value: Math.round(fxConvert(r.equity,0))},
+    {Metric:'IRR %', Value: r.irr!==null ? +r.irr.toFixed(2) : 'N/A'},
+    {Metric:'Break-even Year', Value: r.breakeven || 'NO BREAKEVEN'},
+    {Metric:'Total P/L', Value: Math.round(fxConvert(r.totalPL, base.hold))},
+  ];
+  const wsK = XLSX.utils.json_to_sheet(kpiRows);
+  wsK['!cols'] = [{wch:22},{wch:24}];
+  XLSX.utils.book_append_sheet(wb, wsK, 'Summary');
+
+  XLSX.writeFile(wb, `property_analysis_${currentScenario}_${cur}.xlsx`);
+}
+function downloadPDF(){
+  window.print();
+}
 if(sessionStorage.getItem('ptok')==='1') runAll();
 </script>
 </body>
